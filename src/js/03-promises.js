@@ -5,10 +5,12 @@ function createPromise(position, delay) {
     setTimeout(() => {
       const shouldResolve = Math.random() > 0.3;
 
+      const result = { position, delay };
+
       if (shouldResolve) {
-        resolve({ position, delay });
+        resolve(result);
       } else {
-        reject({ position, delay });
+        reject(result);
       }
     }, delay);
   });
@@ -17,25 +19,34 @@ function createPromise(position, delay) {
 document.querySelector('.form').addEventListener('submit', async event => {
   event.preventDefault();
 
-  const delay = parseInt(document.querySelector('input[name="delay"]').value);
+  let firstDelay = parseInt(
+    document.querySelector('input[name="delay"]').value
+  );
   const step = parseInt(document.querySelector('input[name="step"]').value);
   const amount = parseInt(document.querySelector('input[name="amount"]').value);
 
-  const promises = [];
+  const handlePromise = async (position, delay) => {
+    try {
+      const result = await createPromise(position, delay);
+
+      const fulfilledMessage = `Fulfilled promise ${result.position} in ${result.delay}ms`;
+      Notiflix.Notify.success(fulfilledMessage, {
+        cssAnimationDuration: 500,
+      });
+    } catch (error) {
+      const { position, delay } = error;
+      const rejectedMessage = `Rejected promise ${position} in ${delay}ms`;
+      Notiflix.Notify.failure(rejectedMessage, {
+        cssAnimationDuration: 500, //
+      });
+    }
+  };
 
   for (let i = 1; i <= amount; i++) {
-    promises.push(createPromise(i, delay));
+    await handlePromise(i, firstDelay);
+
+    firstDelay += step;
+
+    await new Promise(resolve => setTimeout(resolve, step));
   }
-
-  const results = await Promise.allSettled(promises);
-
-  results.forEach(result => {
-    if (result.status === 'fulfilled') {
-      const { position, delay } = result.value;
-      Notiflix.Notify.success(`Fulfilled promise ${position} in ${delay}ms`);
-    } else {
-      const { position, delay } = result.reason;
-      Notiflix.Notify.failure(`Rejected promise ${position} in ${delay}ms`);
-    }
-  });
 });
